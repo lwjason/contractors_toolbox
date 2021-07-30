@@ -125,15 +125,15 @@ class InterestedDicomTagExtractor:
 
     @classmethod
     def get_df(cls, df_dcm_file):
-        cls.dicom_tag_processor = DicomTagProcessor()
+        dicom_tag_processor = DicomTagProcessor()
         subject_list = []
         for _, row in df_dcm_file.iterrows():
             ds = pydicom.dcmread(row["path"], stop_before_pixels=True)
-            elements = cls.dicom_tag_processor.get_elements(ds)
+            elements = dicom_tag_processor.get_elements(ds)
             data = {
                 "subject_id": row["subject_id"],
                 "sequence_name": row["sequence_name"],
             }
             data.update(elements)
             subject_list.append(data)
-        return [{k: v for k, v in s.items() if k in cls.keys} for s in subject_list]
+        return pd.DataFrame({k: v for k, v in s.items() if k in cls.keys} for s in subject_list])
