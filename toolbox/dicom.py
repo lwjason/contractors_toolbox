@@ -136,4 +136,4 @@ class InterestedDicomTagExtractor:
             }
             data.update(elements)
             subject_list.append(data)
-        return pd.DataFrame({k: v for k, v in s.items() if k in cls.keys} for s in subject_list])
+        return pd.DataFrame([{k: v for k, v in s.items() if k in cls.keys} for s in subject_list])
