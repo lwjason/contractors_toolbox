@@ -4,7 +4,8 @@ import os
 import pydicom
 import pandas as pd
 import SimpleITK as sitk
-
+import numpy as np
+import natsort
 """ DICOM RELATED NAMED CONSTANTS USED WITHIN PROJECT
 """
 
@@ -170,10 +171,60 @@ def load_scan(dicom_dir_path):
     slices.sort(key=lambda s: s.SliceLocation)
     return slices
 
+class DicomReader:
+    """Read a dicom series by SimpleITK"""
+    def __init__(self, dcm_root: str):
+        """ Init the class by a given dcm_root.
 
-def read_from_dicom_files(dicom_file_paths):
-    reader = sitk.ImageSeriesReader()
-    dicom_names = reader.GetGDCMSeriesFileNames(dicom_file_paths)
-    reader.SetFileNames(dicom_names)
-    itk_image = reader.Execute()
-    return itk_image
+        :param dcm_root: a folder path, it should be the parent folder of a dicom series,
+        for example /kaggle/input/rsna-miccai-brain-tumor-radiogenomic-classification/train/00000/FLAIR/.
+        """
+        self.dcm_root = dcm_root
+        self.itk_image = self.read_from_dicom_series()
+
+    def get_array(self):
+        return sitk.GetArrayFromImage(self.itk_image)
+
+    def read_from_dicom_series(self) -> sitk.ImageSeriesReader:
+        """Read a dicom series by SimpleITK and return sitk_image
+
+        :param dicom_file_paths: image root of each seq root
+        :return: sitk image
+        """
+        reader = sitk.ImageSeriesReader()
+        dicom_names = reader.GetGDCMSeriesFileNames(self.dcm_root)
+        reader.SetFileNames(dicom_names)
+        itk_image = reader.Execute()
+        return itk_image
+
+    def print_image_info(self):
+        """ Prints SimpleITK image information"""
+        print(f"[INFO]: Shape - {self.itk_image.GetSize()}")
+        print(f"[INFO]: Spacing - {self.itk_image.GetSpacing()}")
+        print(f"[INFO]: Origin - {self.itk_image.GetOrigin()}")
+        print(f"[INFO]: Direction - {self.itk_image.GetDirection()}\n")
+
+    def resample_img(self, out_spacing=[1.0, 1.0, 1.0]):
+        """ Resample image to  isotropic resolution.
+
+        :param out_spacing - desired resampling resolution
+        :return - resampled SimpleITK image
+        """
+        original_spacing = self.itk_image.GetSpacing()  # Takes into account Z-axis (i.e. slice thickness) as well
+        original_size = self.itk_image.GetSize()
+        out_size = [
+            int(np.round(original_size[0] * (original_spacing[0] / out_spacing[0]))),
+            int(np.round(original_size[1] * (original_spacing[1] / out_spacing[1]))),
+            int(np.round(original_size[2] * (original_spacing[2] / out_spacing[2])))]
+
+        resample = sitk.ResampleImageFilter()
+        resample.SetOutputSpacing(out_spacing)
+        resample.SetSize(out_size)
+        resample.SetOutputDirection(self.itk_image.GetDirection())
+        resample.SetOutputOrigin(self.itk_image.GetOrigin())
+        resample.SetTransform(sitk.Transform())
+        resample.SetDefaultPixelValue(self.itk_image.GetPixelIDValue())  # Padding
+
+        resample.SetInterpolator(sitk.sitkBSpline)
+
+        return resample.Execute(self.itk_image)
