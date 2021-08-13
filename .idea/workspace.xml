@@ -2,6 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9cd86108-3e1b-4e92-9cd7-47603b2a45bd" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/toolbox/preprocessing.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/toolbox/visualization.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/toolbox/dicom.py" beforeDir="false" afterPath="$PROJECT_DIR$/toolbox/dicom.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
