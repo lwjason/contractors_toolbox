@@ -1,2 +1,5 @@
 pandas
 pydicom
+numpy
+matplotlib
+SimpleITK
