@@ -27,16 +27,6 @@ def resample_img(itk_image, out_spacing=[1.0, 1.0, 1.0]):
     return resample.Execute(itk_image)
 
 
-def print_sitk_info(itk_image):
-    """ Prints SimpleITK image information
-    :param itk_image: SimpleITK image object.
-    """
-    print(f"[INFO]: Shape - {itk_image.GetSize()}")
-    print(f"[INFO]: Spacing - {itk_image.GetSpacing()}")
-    print(f"[INFO]: Origin - {itk_image.GetOrigin()}")
-    print(f"[INFO]: Direction - {itk_image.GetDirection()}\n")
-
-
 def resample_image_to_ref(image, ref, size=(256,256,256), bspline=False, pad_value=0):
     """ Resamples an image to match the resolution and size of a given reference image.
     :param image: SimpleITK image object - target image.

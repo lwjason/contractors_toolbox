@@ -4,8 +4,8 @@ import os
 import pydicom
 import pandas as pd
 import SimpleITK as sitk
-import numpy as np
-import natsort
+from natsort import natsorted
+
 """ DICOM RELATED NAMED CONSTANTS USED WITHIN PROJECT
 """
 
@@ -153,8 +153,7 @@ def get_path_to_middle_file(dicom_folder):
     for dcm in os.listdir(dicom_folder):
         slice_id = get_file_number(dcm)
         slice_ids_dict[slice_id] = os.path.join(dicom_folder, dcm)
-    slice_ids = list(slice_ids_dict.keys())
-    slice_ids.sort()
+    slice_ids = natsorted(list(slice_ids_dict.keys()))
     return slice_ids_dict[slice_ids[len(slice_ids)//2]]
 
 
@@ -203,28 +202,3 @@ class DicomReader:
         print(f"[INFO]: Spacing - {self.itk_image.GetSpacing()}")
         print(f"[INFO]: Origin - {self.itk_image.GetOrigin()}")
         print(f"[INFO]: Direction - {self.itk_image.GetDirection()}\n")
-
-    def resample_img(self, out_spacing=[1.0, 1.0, 1.0]):
-        """ Resample image to  isotropic resolution.
-
-        :param out_spacing - desired resampling resolution
-        :return - resampled SimpleITK image
-        """
-        original_spacing = self.itk_image.GetSpacing()  # Takes into account Z-axis (i.e. slice thickness) as well
-        original_size = self.itk_image.GetSize()
-        out_size = [
-            int(np.round(original_size[0] * (original_spacing[0] / out_spacing[0]))),
-            int(np.round(original_size[1] * (original_spacing[1] / out_spacing[1]))),
-            int(np.round(original_size[2] * (original_spacing[2] / out_spacing[2])))]
-
-        resample = sitk.ResampleImageFilter()
-        resample.SetOutputSpacing(out_spacing)
-        resample.SetSize(out_size)
-        resample.SetOutputDirection(self.itk_image.GetDirection())
-        resample.SetOutputOrigin(self.itk_image.GetOrigin())
-        resample.SetTransform(sitk.Transform())
-        resample.SetDefaultPixelValue(self.itk_image.GetPixelIDValue())  # Padding
-
-        resample.SetInterpolator(sitk.sitkBSpline)
-
-        return resample.Execute(self.itk_image)
