@@ -1,5 +1,7 @@
 pandas
 pydicom
 numpy
+PyPDF2
 matplotlib
 SimpleITK
+natsort
