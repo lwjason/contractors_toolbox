@@ -12,8 +12,8 @@ with pathlib.Path('requirements.txt').open() as requirements_txt:
 
 setup(
     name='toolbox',
-    version='',
-    packages=['toolbox'],
+    version='0.0.1',
+    packages=['toolbox', 'playground'],
     url='',
     license='',
     author='Pohan',
