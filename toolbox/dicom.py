@@ -1,18 +1,15 @@
-import re
 import glob
 import os
-import pydicom
-import pandas as pd
+import re
+
 import SimpleITK as sitk
+import pandas as pd
+import pydicom
 from natsort import natsorted
 
 """ DICOM RELATED NAMED CONSTANTS USED WITHIN PROJECT
 """
 
-T1 = "T1w"
-T2 = "T2w"
-T1GD = "T1wCE"
-FLAIR = "FLAIR"
 DICOM_PATH = "path"
 SUBJECT_ID = "subject_id"
 SEQUENCE_NAME = "sequence_name"

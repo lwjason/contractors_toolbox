@@ -10,30 +10,8 @@ from monai.transforms import LoadImaged, AddChanneld, Spacingd, Orientationd, En
     Activations, AsDiscrete
 from torch.utils.tensorboard import SummaryWriter
 
-from toolbox.monai import DicomSeries3DReader
-
-INPUT_DIR = "/kaggle/input/rsna-miccai-brain-tumor-radiogenomic-classification"
-T1 = "T1w"
-T2 = "T2w"
-T1GD = "T1wCE"
-FLAIR = "FLAIR"
-ALL_SEQUENCES = [T1, T2, T1GD, FLAIR]
-LABEL = "label"
-
-
-def gen_data_dicts(df, mode):
-    data_list = []
-    for _, row in df.iterrows():
-        subject_id = row["BraTS21ID"]
-        label = row["MGMT_value"]
-        data_list.append({
-            T1: os.path.join(INPUT_DIR, mode, subject_id, T1),
-            T2: os.path.join(INPUT_DIR, mode, subject_id, T2),
-            T1GD: os.path.join(INPUT_DIR, mode, subject_id, T1GD),
-            FLAIR: os.path.join(INPUT_DIR, mode, subject_id, FLAIR),
-            LABEL: label
-        })
-    return data_list
+from toolbox.monai import DicomSeries3DReader, gen_data_dicts
+from toolbox.constants import FLAIR, INPUT_DIR
 
 
 def get_transforms(sequence):
