@@ -3,30 +3,37 @@ from typing import Union, Sequence, Any, Tuple, Dict
 
 import SimpleITK as sitk
 import numpy as np
+import pandas as pd
 from monai.data import ImageReader
 
-from .constants import T1, T2, T1GD, FLAIR
+from .constants import T1, T2, T1GD, FLAIR, INPUT_DIR
 
 LABEL = "label"
 
 
-def gen_data_dicts(df, mode):
+def gen_data_dicts(mode):
     """
     Generate the data dictionary list that MONAI prefers
-    :param df: the df of the train_labels.csv
-    :param mode:
-    :return:
+    :param mode: can be train or test
+    :return:list of data
     """
+    if mode not in ["train", "test"]:
+        raise ValueError(f"Invalid mode {mode}")
+
     data_list = []
+    csv_file = "train_labels.csv" if "train" else "sample_submission.csv"
+
+    df = pd.read_csv(os.path.join(INPUT_DIR, csv_file),
+                     dtype={"BraTS21ID": str, "MGMT_value": int})
+
     for _, row in df.iterrows():
         subject_id = row["BraTS21ID"]
-        label = row["MGMT_value"]
         data_list.append({
             T1: os.path.join(INPUT_DIR, mode, subject_id, T1),
             T2: os.path.join(INPUT_DIR, mode, subject_id, T2),
             T1GD: os.path.join(INPUT_DIR, mode, subject_id, T1GD),
             FLAIR: os.path.join(INPUT_DIR, mode, subject_id, FLAIR),
-            LABEL: label
+            LABEL: row["MGMT_value"] if "train" else None
         })
     return data_list
 

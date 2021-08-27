@@ -137,9 +137,7 @@ def run(train_files, val_files, sequence=FLAIR, root_dir="."):
 
 
 if __name__ == '__main__':
-    df_train_labels = pd.read_csv(os.path.join(INPUT_DIR, "train_labels.csv"),
-                                  dtype={"BraTS21ID": str, "MGMT_value": int})
-    data_dicts = gen_data_dicts(df_train_labels, "train")
+    data_dicts = gen_data_dicts("train")
     # testing
     train_files, val_files = data_dicts[:10], data_dicts[10:15]
 
