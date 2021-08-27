@@ -28,6 +28,10 @@ def gen_data_dicts(mode):
 
     for _, row in df.iterrows():
         subject_id = row["BraTS21ID"]
+        # skip subjects mentioned in
+        # https://www.kaggle.com/c/rsna-miccai-brain-tumor-radiogenomic-classification/discussion/262046
+        if subject_id in ["00109", "00123", "00709"]:
+            continue
         data_list.append({
             T1: os.path.join(INPUT_DIR, mode, subject_id, T1),
             T2: os.path.join(INPUT_DIR, mode, subject_id, T2),
