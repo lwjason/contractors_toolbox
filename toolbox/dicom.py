@@ -170,6 +170,7 @@ def load_scan(dicom_dir_path):
     slices.sort(key=lambda s: s.SliceLocation)
     return slices
 
+
 class DicomReader:
     """Read a dicom series by SimpleITK"""
     def __init__(self, dcm_root: str):
@@ -179,22 +180,30 @@ class DicomReader:
         for example /kaggle/input/rsna-miccai-brain-tumor-radiogenomic-classification/train/00000/FLAIR/.
         """
         self.dcm_root = dcm_root
-        self.itk_image = self.read_from_dicom_series()
+        self.itk_image = read_from_dicom_series(dcm_root)
 
-    def get_array(self):
-        return sitk.GetArrayFromImage(self.itk_image)
-
-    def read_from_dicom_series(self) -> sitk.ImageSeriesReader:
+    @staticmethod
+    def read_from_dicom_series(dcm_root) -> sitk.ImageSeriesReader:
         """Read a dicom series by SimpleITK and return sitk_image
 
-        :param dicom_file_paths: image root of each seq root
+        :param dcm_root: image root of each seq root
         :return: sitk image
         """
         reader = sitk.ImageSeriesReader()
-        dicom_names = reader.GetGDCMSeriesFileNames(self.dcm_root)
+        dicom_names = reader.GetGDCMSeriesFileNames(dcm_root)
         reader.SetFileNames(dicom_names)
         itk_image = reader.Execute()
         return itk_image
+
+    def get_itk_image(self):
+        """ Returns SimpleITK image object.
+        """
+        return self.itk_image
+
+    def get_array(self):
+        """ Returns NumPy N-dimensional array from SimpleITK image.
+        """
+        return sitk.GetArrayFromImage(self.itk_image)
 
     def print_image_info(self):
         """ Prints SimpleITK image information"""
