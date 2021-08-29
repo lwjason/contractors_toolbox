@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from monai.data import ImageReader
 
-from .constants import T1, T2, T1GD, FLAIR, INPUT_DIR
+from .constants import *
 
 LABEL = "label"
 

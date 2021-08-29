@@ -6,3 +6,5 @@ matplotlib
 SimpleITK
 natsort
 monai
+torchio
+pytorch-lightning
