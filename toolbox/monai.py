@@ -43,14 +43,31 @@ def gen_data_dicts(mode):
 
 
 class DicomSeries3DReader(ImageReader):
+    """
+    Load the Dicom Series as a 3D array.
+    It uses SimpleITK to read the Dicom Series.
+    The loaded data array is order by... either (z,x,y) or (z,y,x). Need to clarify.
+    """
     def __init__(self) -> None:
         super().__init__()
         self.header = {}
 
     def verify_suffix(self, filename: Union[Sequence[str], str]) -> bool:
+        """
+        Implement ImageReader required abstract function.
+        It's idea is to check whether the filename(here actually is a folder) is supported or not.
+        :param filename: the folder path of the dicom series
+        :return: True or False
+        """
         return os.path.exists(filename) and os.path.isdir(filename)
 
     def read(self, data: Union[Sequence[str], str], **kwargs) -> Union[Sequence[Any], Any]:
+        """
+        Implement ImageReader required abstract function.
+        Read the image and return the image object
+        :param data: the folder path of the dicom series
+        :return: simple itk image object
+        """
         reader = sitk.ImageSeriesReader()
         dicom_names = reader.GetGDCMSeriesFileNames(data)
         reader.SetFileNames(dicom_names)
@@ -58,6 +75,10 @@ class DicomSeries3DReader(ImageReader):
         return itk_image
 
     def _prep_meta_dict(self, img: sitk.Image):
+        """
+        Get extra metadata that SimpleITK offers.
+        :param img: simple itk image object
+        """
         for k in img.GetMetaDataKeys():
             self.header[k] = img.GetMetaData(k)
         self.header["origin"] = np.asarray(img.GetOrigin())
@@ -81,12 +102,23 @@ class DicomSeries3DReader(ImageReader):
         return np.asarray(shape)
 
     def _prep_header(self, img):
+        """
+        Prepare the header. Header is the bridge to other monai transforms.
+        From my understanding, below headers are necessary.
+        :param img: sitk image object
+        """
         self._prep_meta_dict(img)
         self._prep_affine()
         self._prep_spatial_shape(img)
         self.header["original_channel_dim"] = "no_channel"
 
     def get_data(self, img: sitk.Image) -> Tuple[np.ndarray, Dict]:
+        """
+        Implement ImageReader required abstract function.
+        Prepare the final returning objects
+        :param img: sitk image object
+        :return: the numpy array and header dict
+        """
         self._prep_header(img)
         img_array = sitk.GetArrayViewFromImage(img)
         return img_array, self.header
