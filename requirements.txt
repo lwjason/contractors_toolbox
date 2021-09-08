@@ -8,3 +8,5 @@ natsort
 monai
 torchio
 pytorch-lightning
+torch
+scikit-learn
