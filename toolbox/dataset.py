@@ -20,7 +20,7 @@ class DatasetConfig:
         "RandomBiasField": 0.25
     }
 
-    def __init__(self, sequences=[FLAIR], splitMethod = "random", workingSpace=T2):
+    def __init__(self, sequences=[FLAIR], splitMethod = "random", workingSpace=FLAIR):
         if not sequences or sequences not in [T1, T1GD, T2, FLAIR]:
             self.sequences = [T1, T1GD, T2, FLAIR]
         if workingSpace and workingSpace not in sequences:
@@ -59,8 +59,8 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.train_label_df = pd.read_csv(train_label_csv)
         self.augmentation = augmentation
         self.preprocess = preprocess
+        self.config = DatasetConfig()
 
-        self.config = None
         self.transforms = None
         self.train_set = None
         self.val_set = None
