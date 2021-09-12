@@ -12,16 +12,34 @@ from toolbox.constants import T1, T1GD, T2, FLAIR
 
 
 class DatasetConfig:
-    all_sequence = [T1, T1GD, T2, FLAIR]
-    sequence = [FLAIR] # accept multiple inputs e.g. [T1, FLAIR]
-    train_test_split_method: str = "random" # random / sklearn / custom
-    # TorchIO resample template space
-    working_space = T2  # T1 / T1GD / T2 / FLAIR
     # TorchIO Augmentation parameter
-    RandomGamma: float = 0.5
-    RandomNoise: float = 0.5
-    RandomMotion: float = 0.1
-    RandomBiasField: float = 0.25
+    augDict = {
+        "RandomGamma": 0.5,
+        "RandomNoise": 0.5,
+        "RandomMotion": 0.1,
+        "RandomBiasField": 0.25
+    }
+
+    def __init__(self, sequences=[FLAIR], splitMethod = "random", workingSpace=T2):
+        if not sequences or sequences not in [T1, T1GD, T2, FLAIR]:
+            self.sequences = [T1, T1GD, T2, FLAIR]
+        if workingSpace and workingSpace not in sequences:
+            raise ValueError(f"Working space must be one of the sequences for which dataset"\
+                             f"is configured. Acceptable sequences are - {sequences}")
+        if splitMethod not in ["random", "sklearn", "custom"]:
+            raise ValueError(f"Please pick one of the following split methods: random, sklearn, custom")
+        self.sequences = sequences
+        self.workingSpace = workingSpace
+        self.splitMethod = splitMethod
+
+    def config_info(self):
+        print(f"Dataset Sequences: {self.sequences}")
+        print(f"Dataset will be split according to {self.splitMethod} method")
+        if self.workingSpace:
+            print(f"Images will be resampled to {self.workingSpace}")
+        print("Augmentations being used include:")
+        for k, v in augDict.items():
+            print(f"{k} with {v} probability")
 
 
 class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
@@ -31,7 +49,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
 
     Usage: RSNA_MICCAIBrainTumorDataset(dataset_dir, batch_size, train_label_csv, train_val_ratio).setup()
     """
-    def __init__(self, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
+    def __init__(self, dataset_dir, batch_size, train_label_csv, train_val_ratio, config, task=None, preprocess=None,
                  augmentation=None):
         super().__init__()
         self.task = task
@@ -39,7 +57,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.dataset_dir = Path(dataset_dir)
         self.train_val_ratio = train_val_ratio
         self.train_label_df = pd.read_csv(train_label_csv)
-        self.sequence = DatasetConfig.sequence
+        self.config = config
         self.augmentation = augmentation
         self.preprocess = preprocess
 
@@ -181,8 +199,8 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         for i, subject_id in zip(tqdm_notebook(range(len(subject_dict)), desc="Preparing Training Dataset"),
                                  subject_dict):
             subject_label = subject_train_labels[subject_id]
-            if len(self.sequence) == 1:
-                sequence = self.sequence[0]
+            if len(self.config.sequences) == 1:
+                sequence = self.config.sequences[0]
                 subject = self.create_tio_subject_single_image(subject_id=subject_id,
                                                                dicom_sequence_path=subject_dict[subject_id][
                                                                    sequence],
@@ -192,8 +210,8 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
                 subject = self.create_tio_subject_multiple_images(subject_id=subject_id,
                                                                   dicom_sequence_paths=[
                                                                       subject_dict[subject_id][s] for s in
-                                                                      self.sequence],
-                                                                  image_names=[s for s in self.sequence],
+                                                                      self.config.sequences],
+                                                                  image_names=[s for s in self.config.sequences],
                                                                   label=subject_label)
             subjects.append(subject)
         return subjects
