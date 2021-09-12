@@ -12,43 +12,25 @@ from toolbox.constants import T1, T1GD, T2, FLAIR
 
 
 class DatasetConfig:
+    all_sequence = [T1, T1GD, T2, FLAIR]
+    sequence = [FLAIR]  # accept multiple inputs e.g. [T1, FLAIR]
+    train_test_split_method: str = "random"  # random / sklearn / custom
+    # TorchIO resample template space
+    working_space = T2  # T1 / T1GD / T2 / FLAIR
     # TorchIO Augmentation parameter
-    augDict = {
-        "RandomGamma": 0.5,
-        "RandomNoise": 0.5,
-        "RandomMotion": 0.1,
-        "RandomBiasField": 0.25
-    }
-
-    def __init__(self, sequences=[FLAIR], splitMethod = "random", workingSpace=FLAIR):
-        if not sequences or sequences not in [T1, T1GD, T2, FLAIR]:
-            self.sequences = [T1, T1GD, T2, FLAIR]
-        if workingSpace and workingSpace not in sequences:
-            raise ValueError(f"Working space must be one of the sequences for which dataset"\
-                             f"is configured. Acceptable sequences are - {sequences}")
-        if splitMethod not in ["random", "sklearn", "custom"]:
-            raise ValueError(f"Please pick one of the following split methods: random, sklearn, custom")
-        self.sequences = sequences
-        self.workingSpace = workingSpace
-        self.splitMethod = splitMethod
-
-    def config_info(self):
-        print(f"Dataset Sequences: {self.sequences}")
-        print(f"Dataset will be split according to {self.splitMethod} method")
-        if self.workingSpace:
-            print(f"Images will be resampled to {self.workingSpace}")
-        print("Augmentations being used include:")
-        for k, v in augDict.items():
-            print(f"{k} with {v} probability")
+    RandomGamma: float = 0.5
+    RandomNoise: float = 0.5
+    RandomMotion: float = 0.1
+    RandomBiasField: float = 0.25
 
 
 class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     """ Represents pytorch_lightning.LightningDataModule object that is specific to
     RSNA MICCAI-Brain Tumor Kaggle Competition. Although, it can easily be generalised
     to other BINARY CLASSIFICATION tasks.
-
     Usage: RSNA_MICCAIBrainTumorDataset(dataset_dir, batch_size, train_label_csv, train_val_ratio).setup()
     """
+
     def __init__(self, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
                  augmentation=None):
         super().__init__()
@@ -57,9 +39,9 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.dataset_dir = Path(dataset_dir)
         self.train_val_ratio = train_val_ratio
         self.train_label_df = pd.read_csv(train_label_csv)
+        self.sequence = DatasetConfig.sequence
         self.augmentation = augmentation
         self.preprocess = preprocess
-        self.config = DatasetConfig()
 
         self.transforms = None
         self.train_set = None
@@ -70,9 +52,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     def get_preprocess_transform(preprocess):
         """ If specified, returns sequence of preprocessing functions. Otherwise,
         default sequence is returned.
-
         Default space to be resampled is T2w
-
         :param preprocess - sequence of custom preprocessing techniques
         :return sequence of custom, or default preprocessing techniques
         """
@@ -82,7 +62,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
             preprocess = tio.Compose(
                 [
                     tio.ToCanonical(),
-                    tio.Resample(RSNA_MICCAIBrainTumorDataset.config.workingSpace),
+                    tio.Resample(DatasetConfig.working_space),
                     # tio.RescaleIntensity((-1, 1)),
                     tio.OneHot(),
                 ]
@@ -93,7 +73,6 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     def get_augmentation_transform(augment):
         """ If specified, returns sequence of online augmentation functions. Otherwise,
         default sequence is returned.
-
         :param augment - sequence of custom augmentation techniques
         :return sequence of custom, or default augmentation techniques
         """
@@ -104,16 +83,15 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         else:
             return tio.Compose([
                 tio.RandomAffine(),
-                tio.RandomGamma(p=config["RandomGamma"]),
-                tio.RandomNoise(p=config["RandomNoise"]),
-                tio.RandomMotion(p=config["RandomMotion"]),
-                tio.RandomBiasField(p=config["RandomBiasField"]),
+                tio.RandomGamma(p=DatasetConfig.RandomGamma),
+                tio.RandomNoise(p=DatasetConfig.RandomNoise),
+                tio.RandomMotion(p=DatasetConfig.RandomMotion),
+                tio.RandomBiasField(p=DatasetConfig.RandomBiasField),
             ])
 
     @staticmethod
     def create_tio_subject_single_image(subject_id, dicom_sequence_path, image_name, label=None) -> tio.Subject:
         """ Creates torchio.Subject and adds single image to it.
-
         :param subject_id: string which uniquely identifies subject id
         :param dicom_sequence_path: absolute path to DICOM sequence directory
         :param image_name: name of the image
@@ -131,7 +109,6 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     @staticmethod
     def create_tio_subject_multiple_images(subject_id, dicom_sequence_paths, image_names, label=None):
         """ Creates torchio.Subject and adds sequence of images to it.
-
         :param subject_id: string which uniquely identifies subject id
         :param dicom_sequence_paths: absolute paths to DICOM sequence directories
         :param image_names: name of the images
@@ -144,7 +121,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
             "label": label,
             image_names[0]: tio_image
         })
-        for idx in range(1, len(dicom_sequence_paths)):
+        for idx in range(1, len(DatasetConfig.all_sequence)):
             tio_image = tio.ScalarImage(dicom_sequence_paths[idx])
             subject.add_image(image=tio_image,
                               image_name=image_names[idx])
@@ -153,7 +130,6 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     @staticmethod
     def get_max_shape(subjects):
         """ Returns maximum shape based on list of subjects
-
         :param subjects - list of subjects for which we want
          to retrieve maximum shape
         :return maximum subject shape
@@ -184,23 +160,23 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
 
     def prepare_data(self) -> Tuple[List[Subject], List[Subject]]:
         """ Creates a list of tio.Subject(s) for both, training and test sets.
-
         by default its FLAIR, but it could also be a LIST of sequences as well.
         """
         subject_train_dict, subject_test_dict = self.get_subject_dicts()
         subject_train_labels = self.get_subject_labels(subject_column="BraTS21ID", label_column="MGMT_value")
 
         subjects = self.create_subjects(subject_train_dict, subject_train_labels)
-        test_subjects = self.create_subjects(subject_test_dict, subject_train_labels)
+        test_subjects = self.create_subjects(subject_test_dict)
         return subjects, test_subjects
 
-    def create_subjects(self, subject_dict, subject_train_labels):
+    def create_subjects(self, subject_dict, subject_labels=None):
         subjects = []
         for i, subject_id in zip(tqdm_notebook(range(len(subject_dict)), desc="Preparing Training Dataset"),
                                  subject_dict):
-            subject_label = subject_train_labels[subject_id]
-            if len(self.config.sequences) == 1:
-                sequence = self.config.sequences[0]
+
+            subject_label = subject_labels[subject_id] if subject_labels else None
+            if len(self.sequence) == 1:
+                sequence = self.sequence[0]
                 subject = self.create_tio_subject_single_image(subject_id=subject_id,
                                                                dicom_sequence_path=subject_dict[subject_id][
                                                                    sequence],
@@ -210,15 +186,14 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
                 subject = self.create_tio_subject_multiple_images(subject_id=subject_id,
                                                                   dicom_sequence_paths=[
                                                                       subject_dict[subject_id][s] for s in
-                                                                      self.config.sequences],
-                                                                  image_names=[s for s in self.config.sequences],
+                                                                      self.sequence],
+                                                                  image_names=[s for s in self.sequence],
                                                                   label=subject_label)
             subjects.append(subject)
         return subjects
 
     def get_subject_labels(self, subject_column, label_column, zfill=5):
         """ Creates subject_id : label dictionary
-
         :param subject_column - column with subject ID
         :param label_column - MGMT value
         :param zfill=5 - for RSNA MICCAI-Brain Tumor competition subject ID's
@@ -263,24 +238,25 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         return DataLoader(self.test_set, self.batch_size)
 
     def setup(self,
-              config,
+              data_split=DatasetConfig.train_test_split_method,
               splitting_func=None,
-              stage=None,
-              **kwargs,
+              kwargs=None,
+              stage=None
               ):
         """ Set's up TRAINING, VALIDATION and TEST datasets according to the specified
         splitting criteria.
-
         :param data_split - how the data is going to be split, by default its random, but
          other options include: sklearn and custom
+        :param splitting_func - pointer to the custom splitting function if applicable
+        :param kwargs - dictionary of parameters for the custom splitting function. Must
+         be passed together with splitting_func parameter
         """
-        self.config = config
         preprocess = self.get_preprocess_transform(self.preprocess)
         augmentation = self.get_augmentation_transform(self.augmentation)
         self.transforms = tio.Compose([preprocess, augmentation])
 
         subjects, test_subjects = self.prepare_data()
-        train_subjects, val_subjects = self.split_data(subjects, config.splitMethod, splitting_func, kwargs)
+        train_subjects, val_subjects = self.split_data(subjects, data_split, splitting_func, kwargs)
         self.train_set = tio.SubjectsDataset(train_subjects, transform=self.transforms)
         # val and test dataset should not apply augmentation methods.
         self.val_set = tio.SubjectsDataset(val_subjects, transform=self.preprocess)
