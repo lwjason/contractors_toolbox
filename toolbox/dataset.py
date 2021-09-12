@@ -82,7 +82,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
             preprocess = tio.Compose(
                 [
                     tio.ToCanonical(),
-                    tio.Resample(DatasetConfig.working_space),
+                    tio.Resample(config.workingSpace),
                     # tio.RescaleIntensity((-1, 1)),
                     tio.OneHot(),
                 ]
@@ -104,10 +104,10 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         else:
             return tio.Compose([
                 tio.RandomAffine(),
-                tio.RandomGamma(p=DatasetConfig.RandomGamma),
-                tio.RandomNoise(p=DatasetConfig.RandomNoise),
-                tio.RandomMotion(p=DatasetConfig.RandomMotion),
-                tio.RandomBiasField(p=DatasetConfig.RandomBiasField),
+                tio.RandomGamma(p=config["RandomGamma"]),
+                tio.RandomNoise(p=config["RandomNoise"]),
+                tio.RandomMotion(p=config["RandomMotion"]),
+                tio.RandomBiasField(p=config["RandomBiasField"]),
             ])
 
     @staticmethod
@@ -144,7 +144,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
             "label": label,
             image_names[0]: tio_image
         })
-        for idx in range(1, len(DatasetConfig.all_sequence)):
+        for idx in range(1, len(config.sequences)):
             tio_image = tio.ScalarImage(dicom_sequence_paths[idx])
             subject.add_image(image=tio_image,
                               image_name=image_names[idx])
