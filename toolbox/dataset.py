@@ -49,7 +49,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
 
     Usage: RSNA_MICCAIBrainTumorDataset(dataset_dir, batch_size, train_label_csv, train_val_ratio).setup()
     """
-    def __init__(self, dataset_dir, batch_size, train_label_csv, train_val_ratio, config, task=None, preprocess=None,
+    def __init__(self, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
                  augmentation=None):
         super().__init__()
         self.task = task
@@ -57,10 +57,10 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.dataset_dir = Path(dataset_dir)
         self.train_val_ratio = train_val_ratio
         self.train_label_df = pd.read_csv(train_label_csv)
-        self.config = config
         self.augmentation = augmentation
         self.preprocess = preprocess
 
+        self.config = None
         self.transforms = None
         self.train_set = None
         self.val_set = None
@@ -263,9 +263,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         return DataLoader(self.test_set, self.batch_size)
 
     def setup(self,
-              data_split=DatasetConfig.train_test_split_method,
-              splitting_func=None,
-              kwargs=None,
+              config,
               stage=None
               ):
         """ Set's up TRAINING, VALIDATION and TEST datasets according to the specified
@@ -273,10 +271,8 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
 
         :param data_split - how the data is going to be split, by default its random, but
          other options include: sklearn and custom
-        :param splitting_func - pointer to the custom splitting function if applicable
-        :param kwargs - dictionary of parameters for the custom splitting function. Must
-         be passed together with splitting_func parameter
         """
+        self.config = config
         preprocess = self.get_preprocess_transform(self.preprocess)
         augmentation = self.get_augmentation_transform(self.augmentation)
         self.transforms = tio.Compose([preprocess, augmentation])
