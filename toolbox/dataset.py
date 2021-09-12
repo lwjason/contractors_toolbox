@@ -82,7 +82,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
             preprocess = tio.Compose(
                 [
                     tio.ToCanonical(),
-                    tio.Resample(config.workingSpace),
+                    tio.Resample(RSNA_MICCAIBrainTumorDataset.config.workingSpace),
                     # tio.RescaleIntensity((-1, 1)),
                     tio.OneHot(),
                 ]
@@ -144,7 +144,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
             "label": label,
             image_names[0]: tio_image
         })
-        for idx in range(1, len(config.sequences)):
+        for idx in range(1, len(dicom_sequence_paths)):
             tio_image = tio.ScalarImage(dicom_sequence_paths[idx])
             subject.add_image(image=tio_image,
                               image_name=image_names[idx])
@@ -264,7 +264,9 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
 
     def setup(self,
               config,
-              stage=None
+              splitting_func=None,
+              stage=None,
+              **kwargs,
               ):
         """ Set's up TRAINING, VALIDATION and TEST datasets according to the specified
         splitting criteria.
@@ -278,7 +280,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.transforms = tio.Compose([preprocess, augmentation])
 
         subjects, test_subjects = self.prepare_data()
-        train_subjects, val_subjects = self.split_data(subjects, data_split, splitting_func, kwargs)
+        train_subjects, val_subjects = self.split_data(subjects, config.splitMethod, splitting_func, kwargs)
         self.train_set = tio.SubjectsDataset(train_subjects, transform=self.transforms)
         # val and test dataset should not apply augmentation methods.
         self.val_set = tio.SubjectsDataset(val_subjects, transform=self.preprocess)
