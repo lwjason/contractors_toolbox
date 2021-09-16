@@ -1,13 +1,9 @@
 import os
-import torch
-from typing import Tuple, List
 import pandas as pd
 import numpy as np
 import torchio as tio
 import pytorch_lightning as pl
 from pathlib import Path
-from torchio import Subject
-from tqdm.notebook import tqdm_notebook
 from torch.utils.data import DataLoader
 from toolbox.constants import T1, T1GD, T2, FLAIR
 
@@ -43,7 +39,8 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.sequence = DatasetConfig.sequence
         self.augmentation = augmentation
         self.preprocess = preprocess
-
+        self.subjects = None
+        self.test_subjects = None
         self.transforms = None
         self.train_set = None
         self.val_set = None
@@ -89,44 +86,6 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
             ])
 
     @staticmethod
-    def create_tio_subject_single_image(subject_id, dicom_sequence_path, image_name, label=None) -> tio.Subject:
-        """ Creates torchio.Subject and adds single image to it.
-        :param subject_id: string which uniquely identifies subject id
-        :param dicom_sequence_path: absolute path to DICOM sequence directory
-        :param image_name: name of the image
-        :param label: training label
-        :returm instance of tio.Subject class
-        """
-        tio_image = tio.ScalarImage(dicom_sequence_path)
-        subject = tio.Subject({
-            "subject_id": subject_id,
-            "label": label,
-            image_name: tio_image
-        })
-        return subject
-
-    @staticmethod
-    def create_tio_subject_multiple_images(subject_id, dicom_sequence_paths, image_names, label=None):
-        """ Creates torchio.Subject and adds sequence of images to it.
-        :param subject_id: string which uniquely identifies subject id
-        :param dicom_sequence_paths: absolute paths to DICOM sequence directories
-        :param image_names: name of the images
-        :param label: training label
-        :returm instance of tio.Subject class
-        """
-        tio_image = tio.ScalarImage(dicom_sequence_paths[0])
-        subject = tio.Subject({
-            "subject_id": subject_id,
-            "label": label,
-            image_names[0]: tio_image
-        })
-        for idx in range(1, len(DatasetConfig.all_sequence)):
-            tio_image = tio.ScalarImage(dicom_sequence_paths[idx])
-            subject.add_image(image=tio_image,
-                              image_name=image_names[idx])
-        return subject
-
-    @staticmethod
     def get_max_shape(subjects):
         """ Returns maximum shape based on list of subjects
         :param subjects - list of subjects for which we want
@@ -137,19 +96,19 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         shapes = np.array([s.spatial_shape for s in dataset])
         return shapes.max(axis=0)
 
-    def split_data(self, subjects, data_split, splitting_func, kwargs):
+    def split_data(self, data_split, splitting_func, kwargs):
         """Create train and validation data"""
-        num_subjects = len(subjects)
+        num_subjects = len(self.subjects)
         num_train_subjects = int(round(num_subjects * self.train_val_ratio))
         num_val_subjects = num_subjects - num_train_subjects
         splits = num_train_subjects, num_val_subjects
 
         if data_split == "random":
             from torch.utils.data import random_split
-            train_subjects, val_subjects = random_split(subjects, splits)
+            train_subjects, val_subjects = random_split(self.subjects, splits)
         elif data_split == "sklearn":
             from sklearn.model_selection import train_test_split
-            train_subjects, val_subjects = train_test_split(subjects, test_size=self.train_val_ratio)
+            train_subjects, val_subjects = train_test_split(self.subjects, test_size=self.train_val_ratio)
         elif data_split == "custom" and splitting_func and kwargs:
             train_subjects, val_subjects = splitting_func(**kwargs)
         else:
@@ -157,38 +116,28 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
                 "[ERROR]: Please specify one of the following splitting criteria: random, sklearn or custom")
         return train_subjects, val_subjects
 
-    def prepare_data(self) -> Tuple[List[Subject], List[Subject]]:
+    def prepare_data(self):
         """ Creates a list of tio.Subject(s) for both, training and test sets.
         by default its FLAIR, but it could also be a LIST of sequences as well.
         """
         subject_train_dict, subject_test_dict = self.get_subject_dicts()
         subject_train_labels = self.get_subject_labels(subject_column="BraTS21ID", label_column="MGMT_value")
+        self.subjects = self.create_subjects(subject_train_dict, subject_train_labels)
+        self.test_subjects = self.create_subjects(subject_test_dict, subject_train_labels)
 
-        subjects = self.create_subjects(subject_train_dict, subject_train_labels)
-        test_subjects = self.create_subjects(subject_test_dict)
-        return subjects, test_subjects
 
-    def create_subjects(self, subject_dict, subject_labels=None):
+    def create_subjects(self, subject_dict, subject_labels):
         subjects = []
-        for i, subject_id in zip(tqdm_notebook(range(len(subject_dict)), desc="Preparing Training Dataset"),
-                                 subject_dict):
+        for subject_id, sequence_dict in subject_dict.items():
+            subject_label = subject_labels[subject_id]
+            tio_subject_dict = {
+                "subject_id": subject_id,
+                "label": subject_label,
+            }
+            for sequence in self.sequence:
+                tio_subject_dict[sequence] = sequence_dict[sequence]
 
-            subject_label = subject_labels[subject_id] if subject_labels else None
-            if len(self.sequence) == 1:
-                sequence = self.sequence[0]
-                subject = self.create_tio_subject_single_image(subject_id=subject_id,
-                                                               dicom_sequence_path=subject_dict[subject_id][
-                                                                   sequence],
-                                                               image_name=sequence,
-                                                               label=subject_label)
-            else:
-                subject = self.create_tio_subject_multiple_images(subject_id=subject_id,
-                                                                  dicom_sequence_paths=[
-                                                                      subject_dict[subject_id][s] for s in
-                                                                      self.sequence],
-                                                                  image_names=[s for s in self.sequence],
-                                                                  label=subject_label)
-            subjects.append(subject)
+            subjects.append(tio.Subject(tio_subject_dict))
         return subjects
 
     def get_subject_labels(self, subject_column, label_column, zfill=5):
@@ -206,6 +155,13 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     def get_subject_dicts(self):
         """ Returns dictionary where key represents subject directory path, and value
         represents path to DICOM sequence.
+
+        return {
+            subject_id: {
+                sequence: sequence_path
+            }
+        }
+
         """
         train_dict, test_dict = {}, {}
         for (dataset_type, subject_dict) in [('train', train_dict), ('test', test_dict)]:
@@ -254,9 +210,9 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         augmentation = self.get_augmentation_transform(self.augmentation)
         self.transforms = tio.Compose([preprocess, augmentation])
 
-        subjects, test_subjects = self.prepare_data()
-        train_subjects, val_subjects = self.split_data(subjects, data_split, splitting_func, kwargs)
+        self.prepare_data()
+        train_subjects, val_subjects = self.split_data(data_split, splitting_func, kwargs)
         self.train_set = tio.SubjectsDataset(train_subjects, transform=self.transforms)
         # val and test dataset should not apply augmentation methods.
         self.val_set = tio.SubjectsDataset(val_subjects, transform=self.preprocess)
-        self.test_set = tio.SubjectsDataset(test_subjects, transform=self.preprocess)
+        self.test_set = tio.SubjectsDataset(self.test_subjects, transform=self.preprocess)
