@@ -123,19 +123,20 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         subject_train_dict, subject_test_dict = self.get_subject_dicts()
         subject_train_labels = self.get_subject_labels(subject_column="BraTS21ID", label_column="MGMT_value")
         self.subjects = self.create_subjects(subject_train_dict, subject_train_labels)
-        self.test_subjects = self.create_subjects(subject_test_dict, subject_train_labels)
+        self.test_subjects = self.create_subjects(subject_test_dict, None)
 
 
     def create_subjects(self, subject_dict, subject_labels):
         subjects = []
         for subject_id, sequence_dict in subject_dict.items():
-            subject_label = subject_labels[subject_id]
             tio_subject_dict = {
                 "subject_id": subject_id,
-                "label": subject_label,
             }
+            if subject_train_labels:
+                subject_label = subject_train_labels[subject_id]
+                tio_subject_dict["label"] = subject_label
             for sequence in self.sequence:
-                tio_subject_dict[sequence] = sequence_dict[sequence]
+                tio_subject_dict[sequence] = tio.ScalarImage(sequence_dict[sequence])
 
             subjects.append(tio.Subject(tio_subject_dict))
         return subjects
