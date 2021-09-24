@@ -56,10 +56,8 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         :param preprocess - sequence of custom preprocessing techniques
         :return sequence of custom, or default preprocessing techniques
         """
-        if preprocess:
-            return preprocess
-        else:
-            preprocess = tio.Compose(
+        if not preprocess:
+            return tio.Compose(
                 [
                     tio.ToCanonical(),
                     tio.Resample(DatasetConfig.working_space),
@@ -67,7 +65,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
                     tio.OneHot(),
                 ]
             )
-            return preprocess
+        return preprocess
 
     @staticmethod
     def get_augmentation_transform(augment):
@@ -101,7 +99,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         tio_image = tio.ScalarImage(dicom_sequence_path)
         subject = tio.Subject({
             "subject_id": subject_id,
-            "label": label,
+            "label": torch.tensor([label]),
             image_name: tio_image
         })
         return subject
@@ -118,7 +116,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         tio_image = tio.ScalarImage(dicom_sequence_paths[0])
         subject = tio.Subject({
             "subject_id": subject_id,
-            "label": label,
+            "label": torch.tensor([label]),
             image_names[0]: tio_image
         })
         for idx in range(1, len(DatasetConfig.all_sequence)):
