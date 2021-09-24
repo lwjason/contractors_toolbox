@@ -97,10 +97,12 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         :param label: training label
         :returm instance of tio.Subject class
         """
+        if label:
+            label = torch.tensor([label])
         tio_image = tio.ScalarImage(dicom_sequence_path)
         subject = tio.Subject({
             "subject_id": subject_id,
-            "label": torch.tensor([label]),
+            "label": label,
             image_name: tio_image
         })
         return subject
@@ -114,10 +116,12 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         :param label: training label
         :returm instance of tio.Subject class
         """
+        if label:
+            label = torch.tensor([label])
         tio_image = tio.ScalarImage(dicom_sequence_paths[0])
         subject = tio.Subject({
             "subject_id": subject_id,
-            "label": torch.tensor([label]),
+            "label": label,
             image_names[0]: tio_image
         })
         for idx in range(1, len(DatasetConfig.all_sequence)):
