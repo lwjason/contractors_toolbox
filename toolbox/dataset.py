@@ -36,7 +36,6 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.dataset_dir = Path(dataset_dir)
         self.train_val_ratio = train_val_ratio
         self.train_label_df = pd.read_csv(train_label_csv)
-        self.sequence = DatasetConfig.sequence
         self.augmentation = augmentation
         self.preprocess = preprocess
         self.subjects = None
@@ -116,26 +115,26 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
                 "[ERROR]: Please specify one of the following splitting criteria: random, sklearn or custom")
         return train_subjects, val_subjects
 
-    def prepare_data(self):
+    def prepare_data(self, sequence):
         """ Creates a list of tio.Subject(s) for both, training and test sets.
         by default its FLAIR, but it could also be a LIST of sequences as well.
         """
         subject_train_dict, subject_test_dict = self.get_subject_dicts()
         subject_train_labels = self.get_subject_labels(subject_column="BraTS21ID", label_column="MGMT_value")
-        self.subjects = self.create_subjects(subject_train_dict, subject_train_labels)
-        self.test_subjects = self.create_subjects(subject_test_dict, None)
+        self.subjects = self.create_subjects(sequence, subject_train_dict, subject_train_labels)
+        self.test_subjects = self.create_subjects(sequence, subject_test_dict, None)
 
 
-    def create_subjects(self, subject_dict, subject_labels):
+    def create_subjects(self, sequences, subject_dict, subject_labels):
         subjects = []
         for subject_id, sequence_dict in subject_dict.items():
             tio_subject_dict = {
                 "subject_id": subject_id,
             }
-            if subject_train_labels:
-                subject_label = subject_train_labels[subject_id]
+            if subject_labels:
+                subject_label = subject_labels[subject_id]
                 tio_subject_dict["label"] = subject_label
-            for sequence in self.sequence:
+            for sequence in sequences:
                 tio_subject_dict[sequence] = tio.ScalarImage(sequence_dict[sequence])
 
             subjects.append(tio.Subject(tio_subject_dict))
