@@ -51,18 +51,18 @@ class Model(pl.LightningModule):
 
 def main():
     landmarks_dict = {
-        T1: Path(".") / "histogram_landmarks" / "t1w_landmarks.npy",
-        T2: Path(".") / "histogram_landmarks" / "t2w_landmarks.npy",
-        FLAIR: Path(".") / "histogram_landmarks" / "flair_landmarks.npy",
-        T1GD: Path(".") / "histogram_landmarks" / "t1wce_landmarks.npy",
+        T1: torch.load(Path(".") / "histogram_landmarks" / "t1w_landmarks.npy"),
+        T2: torch.load(Path(".") / "histogram_landmarks" / "t2w_landmarks.npy"),
+        FLAIR: torch.load(Path(".") / "histogram_landmarks" / "flair_landmarks.npy"),
+        T1GD: torch.load(Path(".") / "histogram_landmarks" / "t1wce_landmarks.npy"),
     }
 
     preprocess = tio.Compose([
+        tio.HistogramStandardization(landmarks_dict),
         tio.RescaleIntensity((-1, 1)),
         tio.ToCanonical(),
         tio.Resample((1.0, 1.0, 1.0)),
         tio.Resize((256, 256, 256)),
-        tio.HistogramStandardization(landmarks_dict)
     ])
     dataset = RSNA_MICCAIBrainTumorDataset(
         dataset_dir="/kaggle/input",
