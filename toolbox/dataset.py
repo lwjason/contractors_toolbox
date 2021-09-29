@@ -32,7 +32,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     Usage: RSNA_MICCAIBrainTumorDataset(dataset_dir, batch_size, train_label_csv, train_val_ratio).setup()
     """
 
-    def __init__(self, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
+    def __init__(self, sequence: list, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
                  augmentation=None):
         super().__init__()
         self.task = task
@@ -40,7 +40,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.dataset_dir = Path(dataset_dir)
         self.train_val_ratio = train_val_ratio
         self.train_label_df = pd.read_csv(train_label_csv)
-        self.sequence = DatasetConfig.sequence
+        self.sequence = sequence
         self.augmentation = augmentation
         self.preprocess = preprocess
 
