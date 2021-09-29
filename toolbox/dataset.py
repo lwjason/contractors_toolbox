@@ -7,7 +7,7 @@ import torchio as tio
 import pytorch_lightning as pl
 from pathlib import Path
 from torchio import Subject
-from tqdm.notebook import tqdm_notebook
+from tqdm import tqdm
 from torch.utils.data import DataLoader
 from toolbox.constants import T1, T1GD, T2, FLAIR
 
@@ -166,11 +166,12 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
 
         subjects = self.create_subjects(subject_train_dict, subject_train_labels)
         test_subjects = self.create_subjects(subject_test_dict)
+
         return subjects, test_subjects
 
     def create_subjects(self, subject_dict, subject_labels=None):
         subjects = []
-        for i, subject_id in zip(tqdm_notebook(range(len(subject_dict)), desc="Preparing Training Dataset"),
+        for i, subject_id in zip(tqdm(range(len(subject_dict)), desc=""),
                                  subject_dict):
 
             subject_label = subject_labels[subject_id] if subject_labels else None
@@ -254,7 +255,12 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         augmentation = self.get_augmentation_transform(self.augmentation)
         self.transforms = tio.Compose([preprocess, augmentation])
 
-        subjects, test_subjects = self.prepare_data()
+        #subjects, test_subjects = self.prepare_data()
+        subject_train_dict, subject_test_dict = self.get_subject_dicts()
+        subject_train_labels = self.get_subject_labels(subject_column="BraTS21ID", label_column="MGMT_value")
+
+        subjects = self.create_subjects(subject_train_dict, subject_train_labels)
+        test_subjects = self.create_subjects(subject_test_dict)
         train_subjects, val_subjects = self.split_data(subjects, data_split, splitting_func, kwargs)
         self.train_set = tio.SubjectsDataset(train_subjects, transform=self.transforms)
         # val and test dataset should not apply augmentation methods.
