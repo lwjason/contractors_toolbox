@@ -50,13 +50,11 @@ class Model(pl.LightningModule):
 
 
 def main():
-    data_dicts = pm.gen_data_dicts("train");
-
     landmarks_dict = {
-        "t1w": Path(".") / "histogram_landmarks" / "t1w_landmarks.npy",
-        "t2w": Path(".") / "histogram_landmarks" / "t2w_landmarks.npy",
-        "flair": Path(".") / "histogram_landmarks" / "flair_landmarks.npy",
-        "t1wce": Path(".") / "histogram_landmarks" / "t1wce_landmarks.npy",
+        T1: Path(".") / "histogram_landmarks" / "t1w_landmarks.npy",
+        T2: Path(".") / "histogram_landmarks" / "t2w_landmarks.npy",
+        FLAIR: Path(".") / "histogram_landmarks" / "flair_landmarks.npy",
+        T1GD: Path(".") / "histogram_landmarks" / "t1wce_landmarks.npy",
     }
 
     preprocess = tio.Compose([
@@ -67,9 +65,9 @@ def main():
         tio.HistogramStandardization(landmarks_dict)
     ])
     dataset = RSNA_MICCAIBrainTumorDataset(
-        dataset_dir="C:\\Users\\StefanCepa995\\Desktop\\Machine Learning\\Kaggle Competitions\\rsna-miccai-brain-tumor-radiogenomic-classification\\rsna-miccai-brain-tumor-radiogenomic-classification",
+        dataset_dir="/kaggle/input",
         batch_size=1,
-        train_label_csv="C:\\Users\\StefanCepa995\\Desktop\\Machine Learning\\Kaggle Competitions\\rsna-miccai-brain-tumor-radiogenomic-classification\\rsna-miccai-brain-tumor-radiogenomic-classification\\train_labels.csv",
+        train_label_csv="/kaggle/input/train_labels.csv",
         train_val_ratio=0.8,
         preprocess=preprocess
     )
