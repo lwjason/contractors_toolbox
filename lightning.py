@@ -14,7 +14,7 @@ from toolbox.constants import *
 from tqdm import tqdm
 from playground import pytorch_monai as pm
 from torchio.transforms import HistogramStandardization
-import dicom2nifti
+from pathlib import Path
 
 class Model(pl.LightningModule):
     def __init__(self, net, criterion, learning_rate, optimizer_class):
@@ -49,51 +49,22 @@ class Model(pl.LightningModule):
         return loss
 
 
-def convert_to_nii_file(dcm_dir, nifti_dir):
-    subject_id = dcm_dir.split("\\")[-2]
-    sequence = dcm_dir.split("\\")[-1]
-    output_dir = os.path.join(nifti_dir, subject_id, sequence)
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, "image.nii.gz")
-    try:
-        if not os.path.exists(output_file):
-            dicom2nifti.dicom_series_to_nifti(dcm_dir, output_file)
-    except Exception as e:
-        return None
-    return output_file
-
-
 def main():
-    histogram_landmarks = "C:\\Users\\StefanCepa995\\Desktop\\Machine Learning\\Kaggle Competitions\\rsna-miccai-brain-tumor-radiogenomic-classification\\histogram_landmarks"
-    nifti_dir =  "C:\\Users\\StefanCepa995\\Desktop\\Machine Learning\\Kaggle Competitions\\rsna-miccai-brain-tumor-radiogenomic-classification\\nifti_files"
-    os.makedirs(histogram_landmarks, exist_ok=True)
-    os.makedirs(nifti_dir, exist_ok=True)
-
     data_dicts = pm.gen_data_dicts("train");
 
-    landmarks_dict = {}
-    for sequence_name in ALL_SEQUENCES:
-        print(f"Processing sequence {sequence_name}")
-        image_paths = []
-        for data_dict in tqdm(data_dicts, desc="dicom2nifti"):
-            image_path = convert_to_nii_file(data_dict[sequence_name], nifti_dir)
-            if image_path:
-                image_paths.append(image_path)
-
-        landmarks_path = os.path.join(histogram_landmarks, f"{sequence_name.lower()}_landmarks.npy")
-        landmarks = (
-            landmarks_path
-            if os.path.exists(landmarks_path)
-            else HistogramStandardization.train(image_paths)
-        )
-        torch.save(landmarks, landmarks_path)
-        landmarks_dict[sequence_name] = landmarks
+    landmarks_dict = {
+        "t1w": Path(".") / "histogram_landmarks" / "t1w_landmarks.npy",
+        "t2w": Path(".") / "histogram_landmarks" / "t2w_landmarks.npy",
+        "flair": Path(".") / "histogram_landmarks" / "flair_landmarks.npy",
+        "t1wce": Path(".") / "histogram_landmarks" / "t1wce_landmarks.npy",
+    }
 
     preprocess = tio.Compose([
         tio.RescaleIntensity((-1, 1)),
         tio.ToCanonical(),
         tio.Resample((1.0, 1.0, 1.0)),
         tio.Resize((256, 256, 256)),
+        tio.HistogramStandardization(landmarks_dict)
     ])
     dataset = RSNA_MICCAIBrainTumorDataset(
         dataset_dir="C:\\Users\\StefanCepa995\\Desktop\\Machine Learning\\Kaggle Competitions\\rsna-miccai-brain-tumor-radiogenomic-classification\\rsna-miccai-brain-tumor-radiogenomic-classification",
