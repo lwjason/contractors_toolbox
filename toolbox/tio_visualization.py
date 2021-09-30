@@ -45,11 +45,12 @@ class VisualizeMedicalDataset:
         ax.set_xlabel("Intensity Value")
         ax.grid()
 
-    def plot_subject(self, subject_id=None, output_path=None):
+    def plot_subject(self, subject_id=None, output_path=None, show=True):
         """ Plots subject that corresponds to the specified subject ID, or
         random if not specfiied..
 
         :param subject_id - string by which subjects are uniquely identified.
+
         """
         if subject_id:
             subject_idx = [idx for idx, subject in enumerate(self.data.dry_iter(), 0)
@@ -59,7 +60,7 @@ class VisualizeMedicalDataset:
         else:
             subject_ids = [subject.__dict__['subject_id'] for subject in self.data.dry_iter()]
             subject_idx = random.randint(0, len(subject_ids))
-        self.data[subject_idx].plot(output_path=output_path)
+        self.data[subject_idx].plot(output_path=output_path, show=True)
 
     def get_max_value(self):
         """ Returns maximum pixel value based on list of subjects
@@ -80,3 +81,6 @@ class VisualizeMedicalDataset:
         """
         values = np.array([image.numpy().min() for s in self.data for image in s.get_images()])
         return values.min(axis=0)
+
+    def save_fig(self, subject_id, output_path):
+        self.plot_subject(subject_id, output_path=output_path, show=False)

@@ -10,3 +10,5 @@ torchio
 pytorch-lightning
 torch
 scikit-learn
+tqdm
+scipy
