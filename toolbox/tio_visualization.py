@@ -60,7 +60,7 @@ class VisualizeMedicalDataset:
         else:
             subject_ids = [subject.__dict__['subject_id'] for subject in self.data.dry_iter()]
             subject_idx = random.randint(0, len(subject_ids))
-        self.data[subject_idx].plot(output_path=output_path, show=True)
+        self.data[subject_idx].plot(output_path=output_path, show=show)
 
     def get_max_value(self):
         """ Returns maximum pixel value based on list of subjects
