@@ -1,24 +1,17 @@
-import os
 import monai
 from datetime import datetime
-import pandas as pd
-import numpy as np
 import torch
 import torchio as tio
 import pytorch_lightning as pl
-from torch.utils.data import random_split, DataLoader
-from toolbox.dataset import RSNA_MICCAIBrainTumorDataset, DatasetConfig
-from toolbox.dicom import DicomReader
+from toolbox.dataset import RSNA_MICCAIBrainTumorDataset
+from toolbox.landmarks import landmarks_dict
 from toolbox.constants import *
 
-from tqdm import tqdm
-from playground import pytorch_monai as pm
-from torchio.transforms import HistogramStandardization
-from pathlib import Path
 
 class Model(pl.LightningModule):
-    def __init__(self, net, criterion, learning_rate, optimizer_class):
+    def __init__(self, sequence, net, criterion, learning_rate, optimizer_class):
         super().__init__()
+        self.sequence = sequence
         self.lr = learning_rate
         self.net = net
         self.criterion = criterion
@@ -29,7 +22,7 @@ class Model(pl.LightningModule):
         return optimizer
 
     def prepare_batch(self, batch):
-        return batch['FLAIR'][tio.DATA], batch['label']
+        return batch[self.sequence][tio.DATA], batch['label']
 
     def infer_batch(self, batch):
         x, y = self.prepare_batch(batch)
@@ -59,13 +52,7 @@ class Model(pl.LightningModule):
 
 
 def main():
-    landmarks_dict = {
-        T1: torch.load(Path(".") / "histogram_landmarks" / "t1w_landmarks.npy"),
-        T2: torch.load(Path(".") / "histogram_landmarks" / "t2w_landmarks.npy"),
-        FLAIR: torch.load(Path(".") / "histogram_landmarks" / "flair_landmarks.npy"),
-        T1GD: torch.load(Path(".") / "histogram_landmarks" / "t1wce_landmarks.npy"),
-    }
-
+    sequence = T1GD
     preprocess = tio.Compose([
         tio.HistogramStandardization(landmarks_dict),
         tio.RescaleIntensity((-1, 1)),
@@ -74,9 +61,10 @@ def main():
         tio.Resize((256, 256, 256)),
     ])
     dataset = RSNA_MICCAIBrainTumorDataset(
+        sequence=[sequence],
         dataset_dir="/kaggle/input",
         batch_size=1,
-        train_label_csv="/kaggle/input/train_labels.csv",
+        train_label_csv="/kaggle/input/rsna-miccai-brain-tumor-radiogenomic-classification/train_labels.csv/train_labels.csv",
         train_val_ratio=0.8,
         preprocess=preprocess
     )
@@ -87,11 +75,13 @@ def main():
 
     densenet = monai.networks.nets.DenseNet121(spatial_dims=3, in_channels=1, out_channels=2)
 
-    model = Model(net=densenet,
-                  criterion=torch.nn.CrossEntropyLoss(),
-                  optimizer_class=torch.optim.AdamW,
-                  learning_rate=1e-2
-                  )
+    model = Model(
+        sequence= sequence,
+        net=densenet,
+        criterion=torch.nn.CrossEntropyLoss(),
+        optimizer_class=torch.optim.AdamW,
+        learning_rate=5e-5,
+    )
 
     early_stopping = pl.callbacks.early_stopping.EarlyStopping(
         monitor='val_loss'

@@ -32,7 +32,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     Usage: RSNA_MICCAIBrainTumorDataset(dataset_dir, batch_size, train_label_csv, train_val_ratio).setup()
     """
 
-    def __init__(self, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
+    def __init__(self, sequence, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
                  augmentation=None, num_workers=0):
 
         super().__init__()
@@ -41,7 +41,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.dataset_dir = Path(dataset_dir)
         self.train_val_ratio = train_val_ratio
         self.train_label_df = pd.read_csv(train_label_csv)
-        self.sequence = sequence
+        self.sequence: list = sequence
         self.augmentation = augmentation
         self.preprocess = preprocess
         self.num_workers = num_workers
@@ -59,16 +59,10 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         :param preprocess - sequence of custom preprocessing techniques
         :return sequence of custom, or default preprocessing techniques
         """
-        if not preprocess:
-            return tio.Compose(
-                [
-                    tio.ToCanonical(),
-                    tio.Resample(DatasetConfig.working_space),
-                    # tio.RescaleIntensity((-1, 1)),
-                    tio.OneHot(),
-                ]
-            )
-        return preprocess
+        if preprocess:
+            return preprocess
+        else:
+            return tio.Compose([])
 
     @staticmethod
     def get_augmentation_transform(augment):
@@ -82,13 +76,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
             return augment
 
         else:
-            return tio.Compose([
-                tio.RandomAffine(),
-                tio.RandomGamma(p=DatasetConfig.RandomGamma),
-                tio.RandomNoise(p=DatasetConfig.RandomNoise),
-                tio.RandomMotion(p=DatasetConfig.RandomMotion),
-                tio.RandomBiasField(p=DatasetConfig.RandomBiasField),
-            ])
+            return tio.Compose([])
 
     @staticmethod
     def create_tio_subject_single_image(subject_id, dicom_sequence_path, image_name, label=None) -> tio.Subject:
