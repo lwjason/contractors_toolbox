@@ -33,7 +33,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     """
 
     def __init__(self, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
-                 augmentation=None):
+                 augmentation=None, num_workers=0):
         super().__init__()
         self.task = task
         self.batch_size = batch_size
@@ -43,6 +43,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.sequence = DatasetConfig.sequence
         self.augmentation = augmentation
         self.preprocess = preprocess
+        self.num_workers = num_workers
 
         self.transforms = None
         self.train_set = None
@@ -226,22 +227,22 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     def train_dataloader(self):
         """ Returns PyTorch DataLoader for TRAINING set.
         """
-        return DataLoader(self.train_set, self.batch_size)
+        return DataLoader(self.train_set, self.batch_size, num_workers=self.num_workers)
 
     def val_dataloader(self):
         """ Returns PyTorch DataLoader for VALIDATION set.
         """
-        return DataLoader(self.val_set, self.batch_size)
+        return DataLoader(self.val_set, self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
         """ Returns PyTorch DataLoader for TEST set.
         """
-        return DataLoader(self.test_set, self.batch_size)
+        return DataLoader(self.test_set, self.batch_size, num_workers=self.num_workers)
     
     def predict_dataloader(self):
         """ Returns PyTorch DataLoader for Predict set.
         """
-        return DataLoader(self.test_set, self.batch_size)
+        return DataLoader(self.test_set, self.batch_size, num_workers=self.num_workers)
 
     def setup(self,
               data_split=DatasetConfig.train_test_split_method,
