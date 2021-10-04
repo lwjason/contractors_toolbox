@@ -48,6 +48,15 @@ class Model(pl.LightningModule):
         self.log("val_loss", loss, prog_bar=True)
         return loss
 
+    def test_step(self, batch, batch_idx):
+        y_hat, y = self.infer_batch(batch)
+        loss = self.criterion(y_hat, y)
+        return loss
+    
+    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+        y, _ = self.infer_batch(batch)
+        return y.argmax(dim=1)
+
 
 def main():
     landmarks_dict = {

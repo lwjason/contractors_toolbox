@@ -237,6 +237,11 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         """ Returns PyTorch DataLoader for TEST set.
         """
         return DataLoader(self.test_set, self.batch_size)
+    
+    def predict_dataloader(self):
+        """ Returns PyTorch DataLoader for Predict set.
+        """
+        return DataLoader(self.test_set, self.batch_size)
 
     def setup(self,
               data_split=DatasetConfig.train_test_split_method,
