@@ -1,2 +1,6 @@
 .idea
 *.egg-info
+*.pyc
+.ipynb_checkpoints/
+.virtual_documents/
+lightning_logs/

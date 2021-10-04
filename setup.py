@@ -20,4 +20,6 @@ setup(
     author_email='l.w.jasons@gmail.com',
     description='Contractors toolbox',
     install_requires=install_requires,
+    include_package_data=True,
+    package_data={'toolbox': ['histogram_landmarks/*.npy']}
 )
