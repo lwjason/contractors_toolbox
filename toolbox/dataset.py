@@ -1,5 +1,4 @@
 import os
-import torch
 from typing import Tuple, List
 import pandas as pd
 import numpy as np
@@ -32,16 +31,17 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     Usage: RSNA_MICCAIBrainTumorDataset(dataset_dir, batch_size, train_label_csv, train_val_ratio).setup()
     """
 
-    def __init__(self, sequence, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
+    def __init__(self, sequence: str, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
                  augmentation=None, num_workers=0):
 
         super().__init__()
+        self.check_sequence_valid(sequence)
         self.task = task
         self.batch_size = batch_size
         self.dataset_dir = Path(dataset_dir)
         self.train_val_ratio = train_val_ratio
         self.train_label_df = pd.read_csv(train_label_csv)
-        self.sequence: list = sequence
+        self.sequence: list = [sequence]
         self.augmentation = augmentation
         self.preprocess = preprocess
         self.num_workers = num_workers
@@ -50,6 +50,11 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.train_set = None
         self.val_set = None
         self.test_set = None
+
+    @staticmethod
+    def check_sequence_valid(sequence):
+        if sequence not in [T1, T1GD, T2, FLAIR]:
+            raise KeyError(f"Only accept one of the listed sequence, {[T1, T1GD, T2, FLAIR]}")
 
     @staticmethod
     def get_preprocess_transform(preprocess):
