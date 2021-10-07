@@ -10,7 +10,7 @@ from monai.transforms import LoadImaged, AddChanneld, Spacingd, Orientationd, En
     Activations, AsDiscrete
 from torch.utils.tensorboard import SummaryWriter
 
-from toolbox.monai import DicomSeries3DReader, gen_data_dicts
+from toolbox.test_monai import DicomSeries3DReader, gen_data_dicts
 from toolbox.constants import FLAIR, INPUT_DIR
 
 

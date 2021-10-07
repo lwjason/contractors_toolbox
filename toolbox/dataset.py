@@ -41,7 +41,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.dataset_dir = Path(dataset_dir)
         self.train_val_ratio = train_val_ratio
         self.train_label_df = pd.read_csv(train_label_csv)
-        self.sequence: list = [sequence]
+        self.sequence = sequence
         self.augmentation = augmentation
         self.preprocess = preprocess
         self.num_workers = num_workers
@@ -53,8 +53,11 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
 
     @staticmethod
     def check_sequence_valid(sequence):
-        if sequence not in [T1, T1GD, T2, FLAIR]:
-            raise KeyError(f"Only accept one of the listed sequence, {[T1, T1GD, T2, FLAIR]}")
+        if isinstance(sequence, list):
+            if len(sequence) == 1 and sequence[0] not in [T1, T1GD, T2, FLAIR]:
+                raise KeyError(f"Only accept one of the listed sequence, {[T1, T1GD, T2, FLAIR]}")
+            elif len(sequence) != 1 and any([True for s in sequence if s not in [T1, T1GD, T2, FLAIR]]):
+                raise KeyError(f"Only accept one of the listed sequence, {[T1, T1GD, T2, FLAIR]}")
 
     @staticmethod
     def get_preprocess_transform(preprocess):

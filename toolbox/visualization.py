@@ -7,7 +7,7 @@ import torchio as tio
 from PyPDF2 import PdfFileMerger
 from matplotlib.backends.backend_pdf import PdfPages
 from toolbox.logger import logging
-from toolbox.dicom import DicomReader
+from toolbox.process_dicom import DicomReader
 
 train_image_root = '/kaggle/input/rsna-miccai-brain-tumor-radiogenomic-classification/train'
 test_image_root = '/kaggle/input/rsna-miccai-brain-tumor-radiogenomic-classification/test'
