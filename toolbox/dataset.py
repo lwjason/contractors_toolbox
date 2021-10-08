@@ -211,6 +211,8 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         for (dataset_type, subject_dict) in [('train', train_dict), ('test', test_dict)]:
             dataset_path = os.path.join(self.dataset_dir, dataset_type)
             for subject_dir in os.listdir(dataset_path):
+                if subject_dir in ["00109", "00123", "00709"]:
+                    continue
                 subject_dir_path = os.path.join(dataset_path, subject_dir)
                 for sequence_dir in os.listdir(subject_dir_path):
                     sequence_path = os.path.join(subject_dir_path, sequence_dir)
@@ -224,7 +226,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     def train_dataloader(self):
         """ Returns PyTorch DataLoader for TRAINING set.
         """
-        return DataLoader(self.train_set, self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.train_set, self.batch_size, num_workers=self.num_workers, shuffle=True)
 
     def val_dataloader(self):
         """ Returns PyTorch DataLoader for VALIDATION set.

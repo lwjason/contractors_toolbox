@@ -5,6 +5,8 @@ import monai
 from datetime import datetime
 import torch
 import torchio as tio
+import torchmetrics
+from monai.metrics import ROCAUCMetric
 import pytorch_lightning as pl
 from toolbox.dataset import RSNA_MICCAIBrainTumorDataset
 from toolbox.landmarks import landmarks_dict
@@ -29,6 +31,8 @@ class Model(pl.LightningModule):
         self.criterion = criterion
         self.optimizer_class = optimizer_class
         self.lr_scheduler_class = lr_scheduler_class
+        self.accuracy = torchmetrics.Accuracy()
+        self.auc = ROCAUCMetric()
 
     def configure_optimizers(self):
         """
@@ -36,16 +40,10 @@ class Model(pl.LightningModule):
         lazy, which means that it won't actually be called untill it is needed for training.
         """
         optimizer = self.optimizer_class(self.parameters(), lr=self.lr)
-        lr_scheduler = None
-        if isinstance(self.lr_scheduler_class, torch.optim.lr_scheduler.CyclicLR):
-            lr_scheduler =  torch.optim.lr_scheduler.CyclicLR(optimizer,
-                                                         base_lr=self.learning_rate,
-                                                         max_lr=0.1,
-                                                         step_size_up=5,
-                                                         mode="exp_range",
-                                                         gamma=0.85)
+        
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
 
-        return [optimizer], [lr_scheduler]
+        return {'optimizer': optimizer, 'lr_scheduler': scheduler, 'monitor': 'val_loss', }
 
     def prepare_batch(self, batch):
         """
@@ -74,11 +72,10 @@ class Model(pl.LightningModule):
         """
         y_hat, y = self.infer_batch(batch)
         loss = self.criterion(y_hat, y)
-        self.log("train_loss", loss, prog_bar=True)
-
-        if self.lr_schedulers():
-            sch = self.lr_schedulers()
-            sch.step()
+        preds = torch.argmax(y_hat, dim=1)
+        acc = self.accuracy(preds, y)
+        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, logger=True)
+        self.log("train_acc", acc, prog_bar=True, on_step=True, on_epoch=True, logger=True)
 
         return loss
 
@@ -88,8 +85,17 @@ class Model(pl.LightningModule):
         """
         y_hat, y = self.infer_batch(batch)
         loss = self.criterion(y_hat, y)
-        self.log("val_loss", loss, prog_bar=True)
+        preds = torch.argmax(y_hat, dim=1)
+        acc = self.accuracy(preds, y)
+        self.auc(preds, y)
+        self.log("val_loss", loss, prog_bar=True, on_epoch=True)
+        self.log("val_acc", acc, prog_bar=True, on_epoch=True)
         return loss
+    
+    def on_validation_epoch_end(self):
+        auc_result = self.auc.aggregate()
+        self.log("auc", auc_result, prog_bar=True, on_epoch=True)
+
     
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         """
@@ -145,19 +151,24 @@ def create_trainer(checkpoint_dir,
     """
     print("[INFO]: Initializing PytorchLightning Trainer ...")
     early_stopping = pl.callbacks.early_stopping.EarlyStopping(
-        monitor='val_loss'
+        monitor='val_loss',
+        mode='min',
+        patience=10,
     )
     model_checkpoint = pl.callbacks.model_checkpoint.ModelCheckpoint(
         monitor='val_loss',
         dirpath=checkpoint_dir,
-        filename=filename
+        filename=filename,
+        save_top_k=5,
+        mode='min',
     )
     lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='step')
 
     trainer = pl.Trainer(
-        gpus=gpu_count,
+        gpus=-1, auto_select_gpus=True,
         precision=16,
         auto_lr_find=auto_lr_find,
+        auto_scale_batch_size="binsearch",
         min_epochs=10,
         max_epochs=100,
         #track_grad_norm=2, #L2 Norm
