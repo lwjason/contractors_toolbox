@@ -249,7 +249,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         """ Returns PyTorch DataLoader for VALIDATION set.
         """
         if self.patch_based_mode:
-            return DataLoader(self.val_queue, self.batch_size, shuffle=True)
+            return DataLoader(self.val_queue, self.batch_size, shuffle=False)
 
         return DataLoader(self.val_set, self.batch_size, num_workers=self.num_workers)
 
