@@ -241,8 +241,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         """ Returns PyTorch DataLoader for TRAINING set.
         """
         if self.patch_based_mode:
-            queue = self.create_queue(self.train_set)
-            return DataLoader(queue, self.batch_size, shuffle=True)
+            return DataLoader(self.train_queue, self.batch_size, shuffle=True)
 
         return DataLoader(self.train_set, self.batch_size, num_workers=self.num_workers, shuffle=True)
 
@@ -250,8 +249,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         """ Returns PyTorch DataLoader for VALIDATION set.
         """
         if self.patch_based_mode:
-            queue = self.create_queue(self.val_set)
-            return DataLoader(queue, self.batch_size, shuffle=True)
+            return DataLoader(self.val_queue, self.batch_size, shuffle=True)
 
         return DataLoader(self.val_set, self.batch_size, num_workers=self.num_workers)
 
@@ -296,3 +294,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         # val and test dataset should not apply augmentation methods.
         self.val_set = tio.SubjectsDataset(val_subjects, transform=self.preprocess)
         self.test_set = tio.SubjectsDataset(test_subjects, transform=self.preprocess)
+
+        if self.patch_based_mode:
+            self.train_queue = self.create_queue(self.train_set)
+            self.val_queue = self.create_queue(self.val_set)
