@@ -32,7 +32,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     """
 
     def __init__(self, sequence: str, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
-                 augmentation=None, num_workers=0):
+                 augmentation=None, num_workers=0, patch_based_mode=False):
 
         super().__init__()
         self.check_sequence_valid(sequence)
@@ -50,6 +50,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.train_set = None
         self.val_set = None
         self.test_set = None
+        self.patch_based_mode = patch_based_mode
 
     @staticmethod
     def check_sequence_valid(sequence):
@@ -223,14 +224,35 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
 
         return train_dict, test_dict
 
+    def create_queue(self, dataset):
+        patch_size = 96
+        queue_length = 300
+        samples_per_volume = 15
+        sampler = tio.data.UniformSampler(patch_size=patch_size)
+        return tio.Queue(
+            dataset,
+            queue_length,
+            samples_per_volume,
+            sampler,
+            num_workers=self.num_workers
+        )
+
     def train_dataloader(self):
         """ Returns PyTorch DataLoader for TRAINING set.
         """
+        if self.patch_based_mode:
+            queue = self.create_queue(self.train_set)
+            return DataLoader(queue, self.batch_size, shuffle=True)
+
         return DataLoader(self.train_set, self.batch_size, num_workers=self.num_workers, shuffle=True)
 
     def val_dataloader(self):
         """ Returns PyTorch DataLoader for VALIDATION set.
         """
+        if self.patch_based_mode:
+            queue = self.create_queue(self.val_set)
+            return DataLoader(queue, self.batch_size, shuffle=True)
+
         return DataLoader(self.val_set, self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
