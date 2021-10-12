@@ -46,7 +46,6 @@ class DicomSeries3DReader(ImageReader):
     """
     Load the Dicom Series as a 3D array.
     It uses SimpleITK to read the Dicom Series.
-    The loaded data array is order by... either (z,x,y) or (z,y,x). Need to clarify.
     """
     def __init__(self) -> None:
         super().__init__()
