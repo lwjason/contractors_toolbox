@@ -15,10 +15,10 @@ from monai.data.utils import decollate_batch
 @dataclass
 class ModelConfig:
     criterion: torch.nn.modules.Module = field(
-        default_factory=torch.nn.CrossEntropyLoss)
+        default_factory=torch.nn.CrossEntropyLoss
+    )
     optimizer_class: Callable = torch.optim.AdamW
-    accuracy: torchmetrics.Metric = field(
-        default_factory=torchmetrics.Accuracy)
+    accuracy: torchmetrics.Metric = field(default_factory=torchmetrics.Accuracy)
     auc: monai.metrics.metric.Metric = field(default_factory=ROCAUCMetric)
     lr: float = 1e-4
 
@@ -31,7 +31,8 @@ class Model(pl.LightningModule):
         self.config = config
         self.post_pred = Compose([EnsureType(), Activations(softmax=True)])
         self.post_label = Compose(
-            [EnsureType(), AsDiscrete(to_onehot=True, n_classes=2)])
+            [EnsureType(), AsDiscrete(to_onehot=True, n_classes=2)]
+        )
 
     def forward(self, x):
         return self.net(x)
@@ -42,12 +43,16 @@ class Model(pl.LightningModule):
         lazy, which means that it won't actually be called untill it is needed for training.
         """
         optimizer = self.config.optimizer_class(
-            self.net.parameters(), lr=self.config.lr)
+            self.net.parameters(), lr=self.config.lr
+        )
 
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=5)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
 
-        return {'optimizer': optimizer, 'lr_scheduler': scheduler, 'monitor': 'val_loss',}
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": scheduler,
+            "monitor": "val_loss",
+        }
 
     def prepare_batch(self, batch):
         return batch[self.sequence], batch[C.LABEL]
@@ -61,13 +66,13 @@ class Model(pl.LightningModule):
         y_hat = self.forward(x)
         return y_hat, y
 
-
     def training_step(self, batch, batch_idx):
         y_hat, y = self.infer_batch(batch)
         loss = self.config.criterion(y_hat, y)
 
-        self.log("train_loss", loss, prog_bar=True,
-                 on_step=True, on_epoch=False, logger=True)
+        self.log(
+            "train_loss", loss, prog_bar=True, on_step=True, on_epoch=False, logger=True
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
