@@ -68,8 +68,7 @@ class RSNA_MICCAI_MONAI_Dataset(pl.LightningDataModule):
         if mode not in ["train", "test"]:
             raise ValueError(f"Invalid mode {mode}")
 
-        csv_file = "train_labels.csv" if "train" else "sample_submission.csv"
-
+        csv_file = "train_labels.csv" if mode == "train" else "sample_submission.csv"
         df = pd.read_csv(os.path.join(self.config.dataset_dir, csv_file), dtype={"BraTS21ID": str, "MGMT_value": int})
         subject_dict_list = []
         for _, row in df.iterrows():
@@ -183,11 +182,11 @@ class RSNA_MICCAI_MONAI_Dataset(pl.LightningDataModule):
             #     )
 
         if stage == "test" or stage is None:
-            self.test_ds = PersistentDataset(
+            self.test_ds = CacheDataset(
                 data=self.test_data_list,
                 transform=self.val_transforms,
-                # cache_rate=1.0, num_workers=4,
-                cache_dir = "./cache"
+                cache_rate=1.0, num_workers=4,
+                #cache_dir = "./cache"
                 )
 
         
