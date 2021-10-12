@@ -39,7 +39,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     """
 
     def __init__(self, sequence: str, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
-                 augmentation=None, num_workers=0, patch_based_mode=False):
+                 augmentation=None, num_workers=0, patch_based_mode=False, sample_per_volume=10, patch_size=96):
 
         super().__init__()
         self.check_sequence_valid(sequence)
@@ -58,6 +58,8 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.val_set = None
         self.test_set = None
         self.patch_based_mode = patch_based_mode
+        self.sample_per_volume = sample_per_volume
+        self.patch_size = patch_size
 
     @staticmethod
     def check_sequence_valid(sequence):
@@ -232,9 +234,9 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         return train_dict, test_dict
 
     def create_queue(self, dataset):
-        patch_size = 96
+        patch_size = self.patch_size
         queue_length = 300
-        samples_per_volume = 15
+        samples_per_volume = self.sample_per_volume
         sampler = tio.data.UniformSampler(patch_size=patch_size)
         return tio.Queue(
             dataset,
@@ -248,8 +250,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         """ Returns PyTorch DataLoader for TRAINING set.
         """
         if self.patch_based_mode:
-            queue = self.create_queue(self.train_set)
-            return DataLoader(queue, self.batch_size, shuffle=True)
+            return DataLoader(self.train_queue, self.batch_size, shuffle=True)
 
         return DataLoader(self.train_set, self.batch_size, num_workers=self.num_workers, shuffle=True)
 
@@ -257,8 +258,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         """ Returns PyTorch DataLoader for VALIDATION set.
         """
         if self.patch_based_mode:
-            queue = self.create_queue(self.val_set)
-            return DataLoader(queue, self.batch_size, shuffle=True)
+            return DataLoader(self.val_queue, self.batch_size, shuffle=False)
 
         return DataLoader(self.val_set, self.batch_size, num_workers=self.num_workers)
 
@@ -303,3 +303,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         # val and test dataset should not apply augmentation methods.
         self.val_set = tio.SubjectsDataset(val_subjects, transform=self.preprocess)
         self.test_set = tio.SubjectsDataset(test_subjects, transform=self.preprocess)
+
+        if self.patch_based_mode:
+            self.train_queue = self.create_queue(self.train_set)
+            self.val_queue = self.create_queue(self.val_set)
