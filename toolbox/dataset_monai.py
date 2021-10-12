@@ -87,9 +87,10 @@ class RSNA_MICCAI_MONAI_Dataset(pl.LightningDataModule):
             raise ValueError(f"Invalid mode {mode}")
 
         csv_file = "train_labels.csv" if mode == "train" else "sample_submission.csv"
+        mgmt_value_type = int if mode == "train" else float
         df = pd.read_csv(
             os.path.join(self.config.dataset_dir, csv_file),
-            dtype={"BraTS21ID": str, "MGMT_value": float},
+            dtype={"BraTS21ID": str, "MGMT_value": mgmt_value_type},
         )
         subject_dict_list = []
         for _, row in df.iterrows():
