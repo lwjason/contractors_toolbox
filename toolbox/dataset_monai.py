@@ -11,7 +11,7 @@ import pandas as pd
 import pytorch_lightning as pl
 import torch
 from monai.data import CacheDataset
-from monai.data.dataset import PersistentDataset
+from monai.data.dataset import Dataset, PersistentDataset
 from monai.data.utils import list_data_collate, partition_dataset
 from monai.transforms import (AddChanneld, Compose, CropForegroundd,
                               EnsureTyped, LoadImaged, Orientationd,
@@ -78,6 +78,7 @@ class RSNA_MICCAI_MONAI_Dataset(pl.LightningDataModule):
             if subject_id in ["00109", "00123", "00709"]:
                 continue
             subject_dict_list.append({
+                "subject_id": subject_id,
                 C.T1: os.path.join(self.config.dataset_dir, mode, subject_id, C.T1),
                 C.T2: os.path.join(self.config.dataset_dir, mode, subject_id, C.T2),
                 C.T1GD: os.path.join(self.config.dataset_dir, mode, subject_id, C.T1GD),
@@ -182,11 +183,9 @@ class RSNA_MICCAI_MONAI_Dataset(pl.LightningDataModule):
             #     )
 
         if stage == "test" or stage is None:
-            self.test_ds = CacheDataset(
+            self.test_ds = Dataset(
                 data=self.test_data_list,
-                transform=self.val_transforms,
-                cache_rate=1.0, num_workers=4,
-                #cache_dir = "./cache"
+                transform=self.val_transforms
                 )
 
         
