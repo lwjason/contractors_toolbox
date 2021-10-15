@@ -31,7 +31,7 @@ from monai.transforms.croppad.dictionary import (
     RandSpatialCropSamplesd,
     ResizeWithPadOrCropd,
 )
-from monai.transforms.intensity.dictionary import HistogramNormalized
+from monai.transforms.intensity.dictionary import HistogramNormalized, NormalizeIntensityd
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -139,9 +139,9 @@ class RSNA_MICCAI_MONAI_Dataset(pl.LightningDataModule):
                     #     num_samples=4
                     # ),
                     ResizeWithPadOrCropd(
-                        keys=sequences, spatial_size=(96, 96, 96), mode="minimum"
+                        keys=sequences, spatial_size=(224, 224, 112), mode="minimum"
                     ),
-                    ScaleIntensityd(keys=sequences),
+                    NormalizeIntensityd(keys=sequences),
                     # Resized(keys=sequences, spatial_size=(96, 96, 96)),
                     RandRotated(
                         keys=sequences, range_x=15, range_y=15, range_z=15, prob=0.8
@@ -172,9 +172,9 @@ class RSNA_MICCAI_MONAI_Dataset(pl.LightningDataModule):
                     ),
                     # CenterSpatialCropd(keys=sequences, roi_size=(256,256,256)),
                     ResizeWithPadOrCropd(
-                        keys=sequences, spatial_size=(96, 96, 96), mode="minimum"
+                        keys=sequences, spatial_size=(224, 224, 112), mode="minimum"
                     ),
-                    ScaleIntensityd(keys=sequences),
+                    NormalizeIntensityd(keys=sequences),
                     # Resized(keys=sequences, spatial_size=(96, 96, 96)),
                     ConcatItemsd(keys=sequences, name="ALL_SEQ"),
                     EnsureTyped(keys=["ALL_SEQ"]),

@@ -21,6 +21,7 @@ class ModelConfig:
     accuracy: torchmetrics.Metric = field(default_factory=torchmetrics.Accuracy)
     auc: monai.metrics.metric.Metric = field(default_factory=ROCAUCMetric)
     lr: float = 1e-4
+    weight_decay: float = 1e-5
 
 
 class Model(pl.LightningModule):
@@ -33,6 +34,7 @@ class Model(pl.LightningModule):
         self.post_label = Compose(
             [EnsureType(), AsDiscrete(to_onehot=True, n_classes=2)]
         )
+        self.lr = self.config.lr
 
     def forward(self, x):
         return self.net(x)
@@ -43,7 +45,7 @@ class Model(pl.LightningModule):
         lazy, which means that it won't actually be called untill it is needed for training.
         """
         optimizer = self.config.optimizer_class(
-            self.net.parameters(), lr=self.config.lr
+            self.net.parameters(), lr=self.lr, weight_decay=self.config.weight_decay
         )
 
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
@@ -71,8 +73,11 @@ class Model(pl.LightningModule):
         loss = self.config.criterion(y_hat, y)
 
         self.log(
-            "train_loss", loss, prog_bar=True, on_step=True, on_epoch=False, logger=True
+            "train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, logger=True
         )
+        preds = torch.argmax(y_hat, dim=1)
+        acc = self.config.accuracy(preds.cpu(), y.cpu())
+        self.log("train_acc", acc, prog_bar=True, on_step=True, on_epoch=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
