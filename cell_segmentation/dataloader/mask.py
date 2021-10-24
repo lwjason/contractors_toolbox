@@ -1,6 +1,6 @@
 import numpy as np
 
-DEFAULT_IMAGE_SHAPE = [520, 704]
+DEFAULT_IMAGE_SHAPE = (520, 704)
 CELL_TYPE_LABEL = {
     "shsy5y": 1,
     "cort": 2,
@@ -24,15 +24,16 @@ def rle2mask(rle, label=1, shape=DEFAULT_IMAGE_SHAPE):
     return img.reshape(shape)  # Needed to align to RLE direction
 
 
-def create_mask(df):
+def get_masks(df):
     """Create a segmentation mask for a subject
     """
     if len(df.id.unique()) > 1:
         raise ValueError("There are multiple subjects in the input dataframe. Only accept 1 subject.")
-    final_mask = np.zeros(DEFAULT_IMAGE_SHAPE, dtype=np.uint8)
+    gt_masks = []
     for _, row in df.iterrows():
         rle = row.annotation
         label = CELL_TYPE_LABEL[row.cell_type]
         gt_mask = rle2mask(rle, label=label)
-        final_mask += gt_mask
-    return final_mask
+        gt_masks.append(gt_mask)
+    individual_masks = np.stack(gt_masks)
+    return np.max(individual_masks, axis=0)
