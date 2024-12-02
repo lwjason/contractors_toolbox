@@ -1,14 +1,21 @@
 import os
-from typing import Tuple, List
-import pandas as pd
-import numpy as np
-import torchio as tio
-import pytorch_lightning as pl
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
+from SimpleITK.SimpleITK import Compose
+
+import numpy as np
+import pandas as pd
+import pytorch_lightning as pl
+import torchio as tio
+from monai.data import CacheDataset
+from monai.data.utils import partition_dataset
+from monai.transforms import Compose
+from torch.utils.data import DataLoader
 from torchio import Subject
 from tqdm import tqdm
-from torch.utils.data import DataLoader
-from toolbox.constants import T1, T1GD, T2, FLAIR
+
+from toolbox.constants import FLAIR, T1, T1GD, T2
 
 
 class DatasetConfig:
@@ -32,7 +39,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
     """
 
     def __init__(self, sequence: str, dataset_dir, batch_size, train_label_csv, train_val_ratio, task=None, preprocess=None,
-                 augmentation=None, num_workers=0):
+                 augmentation=None, num_workers=0, patch_based_mode=False, sample_per_volume=10, patch_size=96):
 
         super().__init__()
         self.check_sequence_valid(sequence)
@@ -50,6 +57,9 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         self.train_set = None
         self.val_set = None
         self.test_set = None
+        self.patch_based_mode = patch_based_mode
+        self.sample_per_volume = sample_per_volume
+        self.patch_size = patch_size
 
     @staticmethod
     def check_sequence_valid(sequence):
@@ -211,6 +221,8 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         for (dataset_type, subject_dict) in [('train', train_dict), ('test', test_dict)]:
             dataset_path = os.path.join(self.dataset_dir, dataset_type)
             for subject_dir in os.listdir(dataset_path):
+                if subject_dir in ["00109", "00123", "00709"]:
+                    continue
                 subject_dir_path = os.path.join(dataset_path, subject_dir)
                 for sequence_dir in os.listdir(subject_dir_path):
                     sequence_path = os.path.join(subject_dir_path, sequence_dir)
@@ -221,14 +233,33 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
 
         return train_dict, test_dict
 
+    def create_queue(self, dataset):
+        patch_size = self.patch_size
+        queue_length = 300
+        samples_per_volume = self.sample_per_volume
+        sampler = tio.data.UniformSampler(patch_size=patch_size)
+        return tio.Queue(
+            dataset,
+            queue_length,
+            samples_per_volume,
+            sampler,
+            num_workers=self.num_workers
+        )
+
     def train_dataloader(self):
         """ Returns PyTorch DataLoader for TRAINING set.
         """
-        return DataLoader(self.train_set, self.batch_size, num_workers=self.num_workers)
+        if self.patch_based_mode:
+            return DataLoader(self.train_queue, self.batch_size, shuffle=True)
+
+        return DataLoader(self.train_set, self.batch_size, num_workers=self.num_workers, shuffle=True)
 
     def val_dataloader(self):
         """ Returns PyTorch DataLoader for VALIDATION set.
         """
+        if self.patch_based_mode:
+            return DataLoader(self.val_queue, self.batch_size, shuffle=False)
+
         return DataLoader(self.val_set, self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
@@ -272,3 +303,7 @@ class RSNA_MICCAIBrainTumorDataset(pl.LightningDataModule):
         # val and test dataset should not apply augmentation methods.
         self.val_set = tio.SubjectsDataset(val_subjects, transform=self.preprocess)
         self.test_set = tio.SubjectsDataset(test_subjects, transform=self.preprocess)
+
+        if self.patch_based_mode:
+            self.train_queue = self.create_queue(self.train_set)
+            self.val_queue = self.create_queue(self.val_set)
